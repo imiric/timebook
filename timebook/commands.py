@@ -78,7 +78,13 @@ def run_command(db, name, args):
         cmd = commands[func_name]
         cmd_help = inspect.getdoc(cmd)
         args = docopt(cmd_help, argv=[func_name] + args)
-        cmd(db, args)
+        cmd_argspec = inspect.getargspec(cmd)[0]
+        call_args = {}
+        for arg in args.iterkeys():
+            a = arg.translate(None, '-<>')
+            if a in cmd_argspec:
+                call_args[a] = args[arg]
+        cmd(db, **call_args)
     except:
         db.execute(u'rollback')
         raise
@@ -88,7 +94,7 @@ def run_command(db, name, args):
 # Commands
 
 @command(aliases=('shell',))
-def backend(db, args):
+def backend(db):
     """Open the backend's interactive shell
 
     Usage: t (backend | shell)
@@ -99,7 +105,8 @@ def backend(db, args):
     subprocess.call(('sqlite3', db.path))
 
 @command(name='in', aliases=('start',))
-def in_(db, args, extra=None):
+def in_(db, description='', switch=None, out=False, at=None, resume=False,
+        extra=None):
     """Start the timer for the current timesheet
 
     Usage: t (in | start) [options] [<description>...]
@@ -116,26 +123,26 @@ def in_(db, args, extra=None):
                     Set time of clock-in.
       -r, --resume  Clock in with description of last active period.
     """
-    sheet = args['--switch']
+    sheet = switch
     if sheet:
-        switch(db, {'<timesheet>': sheet, '--verbose': False})
+        commands['switch'](db, timesheet=sheet)
     else:
         sheet = dbutil.get_current_sheet(db)
-    if args['--resume'] and args['<description>']:
+    if resume and description:
         raise SystemExit, '"--resume" already sets a description'
-    timestamp = cmdutil.parse_date_time_or_now(args['--at'])
-    if args['--out']:
+    timestamp = cmdutil.parse_date_time_or_now(at)
+    if out:
         clock_out(db, timestamp=timestamp)
     running = dbutil.get_active_info(db, sheet)
     if running is not None:
         raise SystemExit, 'error: timesheet already active'
     most_recent_clockout = dbutil.get_most_recent_clockout(db, sheet)
-    description = u' '.join(args['<description>']) or None
+    description = u' '.join(description) or None
     if most_recent_clockout:
         (previous_timestamp, previous_description) = most_recent_clockout
         if timestamp < previous_timestamp:
             raise SystemExit, 'error: time periods could end up overlapping'
-        if args['--resume']:
+        if resume:
             description = previous_description
     db.execute(u'''
     insert into entry (
@@ -144,7 +151,7 @@ def in_(db, args, extra=None):
     ''', (sheet, timestamp, description, extra))
 
 @command(aliases=('delete',))
-def kill(db, args):
+def kill(db, timesheet=None):
     """Delete a timesheet
 
     Usage: t (kill | delete) [<timesheet>]
@@ -152,8 +159,8 @@ def kill(db, args):
     Delete a timesheet. If no timesheet is specified, delete the current
     timesheet and switch to the default timesheet.
     """
-    if args['<timesheet>']:
-        to_delete = args['<timesheet>']
+    if timesheet:
+        to_delete = timesheet
         switch_to_default = False
     else:
         to_delete = dbutil.get_current_sheet(db)
@@ -172,10 +179,10 @@ def kill(db, args):
         return
     db.execute(u'delete from entry where sheet = ?', (to_delete,))
     if switch_to_default:
-        switch(db, {'<timesheet>': 'default', '--verbose': False})
+        switch(db, timesheet='default')
 
 @command(aliases=('ls',))
-def list(db, args):
+def list(db, simple=False):
     """Show the available timesheets
 
     Usage: t (list | ls) [-s, --simple]
@@ -183,7 +190,7 @@ def list(db, args):
     Options:
       -s, --simple  Only display the names of the available timesheets.
     """
-    if args['--simple']:
+    if simple:
         db.execute(
         u'''
         select
@@ -240,7 +247,7 @@ def list(db, args):
     cmdutil.pprint_table(table)
 
 @command()
-def switch(db, args):
+def switch(db, timesheet, verbose=False):
     """Switch to a new timesheet
 
     Usage: t switch [options] <timesheet>
@@ -252,11 +259,9 @@ def switch(db, args):
     Options:
       -v, --verbose  Print the name and number of entries of the timesheet.
     """
-    sheet = args['<timesheet>']
-
     # optimization: check that the given timesheet is not already
     # current. updates are far slower than selects.
-    if dbutil.get_current_sheet(db) != sheet:
+    if dbutil.get_current_sheet(db) != timesheet:
         db.execute(u'''
         update
             meta
@@ -264,20 +269,20 @@ def switch(db, args):
             value = ?
         where
             key = 'current_sheet'
-        ''', (args['<timesheet>'],))
+        ''', (timesheet,))
 
-    if args['--verbose']:
-        entry_count = dbutil.get_entry_count(db, sheet)
+    if verbose:
+        entry_count = dbutil.get_entry_count(db, timesheet)
         if entry_count == 0:
-            print u'switched to empty timesheet "%s"' % sheet
+            print u'switched to empty timesheet "%s"' % timesheet
         else:
             print ngettext(
-                u'switched to timesheet "%s" (1 entry)' % sheet,
+                u'switched to timesheet "%s" (1 entry)' % timesheet,
                 u'switched to timesheet "%s" (%s entries)' % (
-                    sheet, entry_count), entry_count)
+                    timesheet, entry_count), entry_count)
 
 @command(aliases=('stop',))
-def out(db, args):
+def out(db, at=None, verbose=False):
     """Stop the timer for the current timesheet
 
     Usage: t (out | stop) [options]
@@ -289,7 +294,7 @@ def out(db, args):
       -a <time>, --at=<time>
                      Set time of clock-out.
     """
-    clock_out(db, args['--at'], args['--verbose'])
+    clock_out(db, at, verbose)
 
 def clock_out(db, at=None, verbose=False, timestamp=None):
     if not timestamp:
@@ -313,7 +318,7 @@ def clock_out(db, at=None, verbose=False, timestamp=None):
     ''', (timestamp, active_id))
 
 @command(aliases=('write',))
-def alter(db, args):
+def alter(db, description):
     """Alter the description of the active period
 
     Usage: t (alter | write) <description>...
@@ -332,10 +337,10 @@ def alter(db, args):
         description = ?
     where
         entry.id = ?
-    ''', (' '.join(args['<description>']), entry_id))
+    ''', (' '.join(description), entry_id))
 
 @command(aliases=('active',))
-def running(db, args):
+def running(db):
     """Show all running timesheets
 
     Usage: t (running | active)
@@ -356,7 +361,7 @@ def running(db, args):
     cmdutil.pprint_table([(u'Timesheet', u'Description')] + db.fetchall())
 
 @command(aliases=('info',))
-def now(db, args):
+def now(db, timesheet=None, simple=False, notes=False):
     """Show the status of the current timesheet
 
     Usage: t (now | info) [options] [<timesheet>]
@@ -372,12 +377,12 @@ def now(db, args):
       -s, --simple  Only display the name of the current timesheet.
       -n, --notes   Only display the notes associated with the current period.
     """
-    if args['--simple']:
+    if simple:
         print dbutil.get_current_sheet(db)
         return
 
-    if args['<timesheet>']:
-        sheet = cmdutil.complete(dbutil.get_sheet_names(db), args['<timesheet>'],
+    if timesheet:
+        sheet = cmdutil.complete(dbutil.get_sheet_names(db), timesheet,
                                  'timesheet')
     else:
         sheet = dbutil.get_current_sheet(db)
@@ -388,23 +393,23 @@ def now(db, args):
 usage, see "%(prog)s --help".' % {'prog': os.path.basename(sys.argv[0])}
 
     running = dbutil.get_active_info(db, sheet)
-    notes = ''
+    _notes = ''
     if running is None:
         active = 'not active'
     else:
         duration = str(timedelta(seconds=running[0]))
         if running[1]:
-            notes = running[1].rstrip('.')
-            active = '%s (%s)' % (duration, notes)
+            _notes = running[1].rstrip('.')
+            active = '%s (%s)' % (duration, _notes)
         else:
             active = duration
-    if args['--notes']:
-        print notes
+    if notes:
+        print _notes
     else:
         print '%s: %s' % (sheet, active)
 
 @command(aliases=('export', 'format', 'show'))
-def display(db, args):
+def display(db, timesheet=None, format='plain', start=None, end=None):
     """Display a timesheet, by default the current one
 
     Usage: t (display | export | format | show) [options] [<timesheet>]
@@ -430,26 +435,26 @@ def display(db, args):
 
     """
     # grab correct sheet
-    if args['<timesheet>']:
-        sheet = cmdutil.complete(dbutil.get_sheet_names(db), args['<timesheet>'],
+    if timesheet:
+        sheet = cmdutil.complete(dbutil.get_sheet_names(db), timesheet,
                                  'timesheet')
     else:
         sheet = dbutil.get_current_sheet(db)
 
     #calculate "where"
     where = ''
-    if args['--start'] is not None:
-        start = cmdutil.parse_date_time(args['--start'])
-        where += ' and start_time >= %s' % start
-    if args['--end'] is not None:
-        end = cmdutil.parse_date_time(args['--end'])
-        where += ' and end_time <= %s' % end
-    if args['--format'] == 'plain':
+    if start is not None:
+        start_date = cmdutil.parse_date_time(start)
+        where += ' and start_time >= %s' % start_date
+    if end is not None:
+        end_date = cmdutil.parse_date_time(end)
+        where += ' and end_time <= %s' % end_date
+    if format == 'plain':
         format_timebook(db, sheet, where)
-    elif args['--format'] == 'csv':
+    elif format == 'csv':
         format_csv(db, sheet, where)
     else:
-        raise SystemExit, 'Invalid format: %s' % args['--format']
+        raise SystemExit, 'Invalid format: %s' % format
 
 def format_csv(db, sheet, where):
     import csv
