@@ -527,7 +527,7 @@ def format_timebook(db, sheet, where):
     where
         e.sheet = ?%s
     order by
-        day asc;
+        e.start_time asc;
     ''' % where, (sheet,))
     entries = db.fetchall()
     for i, (day, start, end, duration, description) in \
