@@ -33,7 +33,6 @@ import time
 from timebook import dbutil, cmdutil
 
 commands = {}
-cmd_aliases = {}
 
 def pre_hook(db, func_name):
     if db.config.has_section('hooks'):
@@ -61,7 +60,8 @@ def command(name=None, aliases=()):
         commands[func_name] = func
         func.description = func.__doc__.split('\n')[0].strip()
         for alias in aliases:
-            cmd_aliases[alias] = func_name
+            if alias not in commands:
+                commands[alias] = func
         @wraps(func)
         def decorated(db, args, **kwargs):
             args, kwargs = pre_hook(db, func_name)(db, args, kwargs)
@@ -72,14 +72,12 @@ def command(name=None, aliases=()):
 
 def run_command(db, name, args):
     from docopt import docopt
-    func = cmd_aliases.get(name, None)
-    if func is None:
-        func = cmdutil.complete(commands, name, 'command')
+    func_name = cmdutil.complete(commands, name, 'command')
     try:
         db.execute(u'begin')
-        cmd = commands[func]
+        cmd = commands[func_name]
         cmd_help = inspect.getdoc(cmd)
-        args = docopt(cmd_help, argv=[func] + args)
+        args = docopt(cmd_help, argv=[func_name] + args)
         cmd(db, args)
     except:
         db.execute(u'rollback')
