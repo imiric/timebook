@@ -438,7 +438,6 @@ style (--format=plain) or csv --format=csv")
 
     #calculate "where"
     where = ''
-    fmt = '%Y-%m-%d'
     if opts.start is not None:
         start = cmdutil.parse_date_time(opts.start)
         where += ' and start_time >= %s' % start
