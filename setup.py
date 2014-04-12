@@ -19,6 +19,9 @@ setup(
         'Topic :: Utilities',
     ],
     packages=['timebook'],
+    install_requires=[
+        'docopt==0.6.1',
+    ],
     entry_points={'console_scripts': [
         't = timebook.cmdline:run_from_cmdline']},
 )

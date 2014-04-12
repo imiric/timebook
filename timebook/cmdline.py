@@ -21,67 +21,65 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-import locale
-from optparse import OptionParser
+"""Timebook time tracker.
+
+Usage:
+  t
+  t [options] <command> [<args>...]
+  t --version
+
+where <command> is one of:
+  %s
+
+Options:
+  -h --help        Show this help message and exit.
+  --version        Show program's version number and exit.
+  -C <file>, --config=<file>
+                   Specify an alternate configuration file
+                   [default: ~/.config/timebook/timebook.ini].
+  -b <timebook>, --timebook=<timebook
+                   Specify an alternate timebook file
+                   [default: ~/.config/timebook/sheets.db].
+  -e <encoding>, --encoding=<encoding>
+                   Specify an alternate encoding to decode command line
+                   options and arguments [default: UTF-8].
+
+"""
+
 import os
+from docopt import docopt
+from timebook.commands import commands, run_command
 
 from timebook import get_version
 from timebook.db import Database
-from timebook.commands import commands, run_command
 from timebook.config import parse_config
 from timebook.cmdutil import AmbiguousLookup, NoMatch
 
-confdir = os.path.expanduser(os.path.join('~', '.config', 'timebook'))
-DEFAULTS = {'config': os.path.join(confdir, 'timebook.ini'),
-            'timebook': os.path.join(confdir, 'sheets.db'),
-            'encoding': locale.getpreferredencoding()}
-
-def make_parser():
+def parse_args():
     cmd_descs = ['%s - %s' % (k, commands[k].description) for k
                  in sorted(commands)]
-    parser = OptionParser(usage='''usage: %%prog [OPTIONS] COMMAND \
-[ARGS...]
-
-where COMMAND is one of:
-    %s''' % '\n    '.join(cmd_descs), version=get_version())
-    parser.disable_interspersed_args()
-    parser.add_option('-C', '--config', dest='config',
-                      default=DEFAULTS['config'], help='Specify an \
-alternate configuration file (default: "%s").' % DEFAULTS['config'])
-    parser.add_option('-b', '--timebook', dest='timebook',
-                      default=DEFAULTS['timebook'], help='Specify an \
-alternate timebook file (default: "%s").' % DEFAULTS['timebook'])
-    parser.add_option('-e', '--encoding', dest='encoding',
-                      default=DEFAULTS['encoding'], help='Specify an \
-alternate encoding to decode command line options and arguments (default: \
-"%s")' % DEFAULTS['encoding'])
-    return parser
-
-def parse_options(parser):
-    options, args = parser.parse_args()
-    encoding = options.__dict__.pop('encoding')
+    help_str = __doc__ % '\n  '.join(cmd_descs)
+    args = docopt(help_str, options_first=True, version=get_version())
+    encoding = args['--encoding']
     try:
-        options.__dict__ = dict((k, v.decode(encoding)) for (k, v) in
-                                options.__dict__.iteritems())
-        args = [a.decode(encoding) for a in args]
+        args.__dict__ = dict((k, v.decode(encoding)) for (k, v) in
+                                args.iteritems() if isinstance(v, basestring))
     except LookupError:
-        parser.error('unknown encoding %s' % encoding)
+        raise SystemExit, 'unknown encoding %s' % encoding
 
-    if len(args) < 1:
+    if not args['<command>']:
         # default to ``t now``
-        args = ['now'] + args
-    return options, args
-
+        args['<command>'] = 'now'
+    return args
 
 def run_from_cmdline():
-    parser = make_parser()
-    options, args = parse_options(parser)
-    config = parse_config(options.config)
-    db = Database(options.timebook, config)
-    cmd, args = args[0], args[1:]
+    args = parse_args()
+    config = parse_config(os.path.expanduser(args['--config']))
+    db = Database(os.path.expanduser(args['--timebook']), config)
+    cmd, args = args['<command>'], args['<args>']
     try:
         run_command(db, cmd, args)
     except NoMatch, e:
-        parser.error('%s' % e.args[0])
+        raise SystemExit, e.args[0]
     except AmbiguousLookup, e:
-        parser.error('%s\n    %s' % (e.args[0], ' '.join(e.args[1])))
+        raise SystemExit, '%s\n    %s' % (e.args[0], ' '.join(e.args[1]))
