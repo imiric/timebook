@@ -9,6 +9,18 @@ time logs of work for presentation to a client, or simply track how you
 spend your free time. Timebook is implemented as a python script which
 maintains its state in a sqlite3 database.
 
+Note
+~~~~
+
+The current repo was forked from
+`trevor/timebook <https://bitbucket.org/trevor/timebook/>`_ and converted
+to Git, so all original work was done by Trevor Caira and James Hartzell.
+This repo is a continuation of their work to add some features I
+personally wanted and change existing ones. Considering I've done major
+code changes, that there hasn't been activity on the original repo since
+2012 and that it's in Mercurial, the work here likely won't ever be merged
+upstream.
+
 Concepts
 ~~~~~~~~
 
