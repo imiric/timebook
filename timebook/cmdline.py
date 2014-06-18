@@ -56,8 +56,8 @@ from timebook.config import parse_config
 from timebook.cmdutil import AmbiguousLookup, NoMatch
 
 def parse_args():
-    cmd_descs = ['%s - %s' % (k, commands[k].description) for k
-                 in sorted(commands)]
+    cmds = sorted(set(commands.values()), key=lambda c: c.name)
+    cmd_descs = ['%s - %s' % (c.name, c.description) for c in cmds]
     help_str = __doc__ % '\n  '.join(cmd_descs)
     args = docopt(help_str, options_first=True, version=get_version())
     encoding = args['--encoding']

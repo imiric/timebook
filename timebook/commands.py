@@ -56,17 +56,17 @@ def post_hook(db, func_name):
 
 def command(name=None, aliases=()):
     def decorator(func):
-        func_name = name or func.func_code.co_name
-        commands[func_name] = func
+        func.name = name or func.func_code.co_name
+        commands[func.name] = func
         func.description = func.__doc__.split('\n')[0].strip()
         for alias in aliases:
             if alias not in commands:
                 commands[alias] = func
         @wraps(func)
         def decorated(db, args, **kwargs):
-            args, kwargs = pre_hook(db, func_name)(db, args, kwargs)
+            args, kwargs = pre_hook(db, func.name)(db, args, kwargs)
             res = func(db, args, **kwargs)
-            return post_hook(db, func_name)(db, res)
+            return post_hook(db, func.name)(db, res)
         return decorated
     return decorator
 
