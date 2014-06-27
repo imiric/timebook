@@ -45,8 +45,10 @@ Options:
                    options and arguments [default: UTF-8].
 
 """
+from __future__ import unicode_literals
 
 import os
+import sys
 from docopt import docopt
 from timebook.commands import commands, run_command
 
@@ -55,31 +57,36 @@ from timebook.db import Database
 from timebook.config import parse_config
 from timebook.cmdutil import AmbiguousLookup, NoMatch
 
-def parse_args():
+def parse_args(argv=[]):
     cmds = sorted(set(commands.values()), key=lambda c: c.name)
     cmd_descs = ['%s - %s' % (c.name, c.description) for c in cmds]
     help_str = __doc__ % '\n  '.join(cmd_descs)
-    args = docopt(help_str, options_first=True, version=get_version())
+    args = docopt(
+        help_str,
+        argv=argv or sys.argv[1:],
+        options_first=True,
+        version=get_version()
+    )
     encoding = args['--encoding']
     try:
         args.__dict__ = dict((k, v.decode(encoding)) for (k, v) in
-                                args.iteritems() if isinstance(v, basestring))
+                                args.items() if isinstance(v, str))
     except LookupError:
-        raise SystemExit, 'unknown encoding %s' % encoding
+        raise SystemExit('unknown encoding %s' % encoding)
 
     if not args['<command>']:
         # default to ``t now``
         args['<command>'] = 'now'
     return args
 
-def run_from_cmdline():
-    args = parse_args()
+def run_from_cmdline(argv=[]):
+    args = parse_args(argv)
     config = parse_config(os.path.expanduser(args['--config']))
     db = Database(os.path.expanduser(args['--timebook']), config)
     cmd, args = args['<command>'], args['<args>']
     try:
         run_command(db, cmd, args)
-    except NoMatch, e:
-        raise SystemExit, e.args[0]
-    except AmbiguousLookup, e:
-        raise SystemExit, '%s\n    %s' % (e.args[0], ' '.join(e.args[1]))
+    except NoMatch as e:
+        raise SystemExit(e.args[0])
+    except AmbiguousLookup as e:
+        raise SystemExit('%s\n    %s' % (e.args[0], ' '.join(e.args[1])))

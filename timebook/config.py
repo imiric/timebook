@@ -21,7 +21,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-from ConfigParser import SafeConfigParser
+try:
+    from ConfigParser import SafeConfigParser  # Python <3
+except ImportError:
+    from configparser import SafeConfigParser  # Python >=3
+
 import os
 
 class ConfigParser(SafeConfigParser):
