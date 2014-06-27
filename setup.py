@@ -20,7 +20,7 @@ setup(
     ],
     packages=['timebook'],
     install_requires=[
-        'docopt==0.6.1',
+        'docopt==0.6.2',
     ],
     entry_points={'console_scripts': [
         't = timebook.cmdline:run_from_cmdline']},
