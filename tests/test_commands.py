@@ -33,7 +33,7 @@ def cmd(request):
 
 @pytest.fixture
 def start(db):
-    db.execute(u'''
+    db.execute('''
     insert into entry (
         sheet, start_time, description
     ) values (?,?,?)

@@ -34,7 +34,7 @@ class Database(object):
         self._initialize_db()
 
     def _initialize_db(self):
-        self.executescript(u'''
+        self.executescript('''
         begin;
         create table if not exists meta (
             key varchar(16) primary key not null,
@@ -52,7 +52,7 @@ class Database(object):
         create index if not exists entry_start_time on entry (start_time);
         create index if not exists entry_end_time on entry (end_time);
         ''')
-        self.execute(u'''
+        self.execute('''
         select
             count(*)
         from
@@ -62,11 +62,11 @@ class Database(object):
         ''')
         count = self.fetchone()[0]
         if count == 0:
-            self.execute(u'''
+            self.execute('''
             insert into meta (
                 key, value 
             ) values (
                 'current_sheet', 'default'
             )''')
         # TODO: version
-        self.execute(u'commit')
+        self.execute('commit')

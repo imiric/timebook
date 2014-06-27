@@ -22,7 +22,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 def get_current_sheet(db):
-    db.execute(u'''
+    db.execute('''
     select
         value
     from
@@ -33,7 +33,7 @@ def get_current_sheet(db):
     return db.fetchone()[0]
 
 def get_sheet_names(db):
-    db.execute(u'''
+    db.execute('''
     select
         distinct sheet
     from
@@ -42,7 +42,7 @@ def get_sheet_names(db):
     return tuple(r[0] for r in db.fetchall())
 
 def get_active_info(db, sheet):
-    db.execute(u'''
+    db.execute('''
     select
         strftime('%s', 'now') - entry.start_time,
         entry.description
@@ -55,7 +55,7 @@ def get_active_info(db, sheet):
     return db.fetchone()
 
 def get_current_active_info(db):
-    db.execute(u'''
+    db.execute('''
     select
         entry.id,
         strftime('%s', 'now') - entry.start_time
@@ -72,7 +72,7 @@ def get_current_active_info(db):
     return db.fetchone()
 
 def get_current_start_time(db):
-    db.execute(u'''
+    db.execute('''
     select
         entry.id,
         entry.start_time
@@ -89,7 +89,7 @@ def get_current_start_time(db):
     return db.fetchone()
 
 def get_entry_count(db, sheet):
-    db.execute(u'''
+    db.execute('''
     select
         count(*)
     from
@@ -100,7 +100,7 @@ def get_entry_count(db, sheet):
     return db.fetchone()[0]
 
 def get_most_recent_clockout(db, sheet):
-    db.execute(u'''
+    db.execute('''
     select
         end_time, description
     from
