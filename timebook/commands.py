@@ -35,7 +35,7 @@ from timebook import dbutil, cmdutil
 commands = {}
 
 def pre_hook(db, func_name):
-    if db.config.has_section('hooks'):
+    if hasattr(db.config, 'has_section') and db.config.has_section('hooks'):
         hook = db.config['hooks'].get(func_name)
         if hook is not None:
             __import__(hook, {}, {}, [])
@@ -45,7 +45,7 @@ def pre_hook(db, func_name):
     return lambda db, args, kwargs: (args, kwargs)
 
 def post_hook(db, func_name):
-    if db.config.has_section('hooks'):
+    if hasattr(db.config, 'has_section') and db.config.has_section('hooks'):
         hook = db.config['hooks'].get(func_name)
         if hook is not None:
             __import__(hook, {}, {}, [])
