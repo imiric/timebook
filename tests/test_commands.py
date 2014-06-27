@@ -84,6 +84,9 @@ def test_now(capsys, end, cmd, db):
     cmd(db)
     out, err = capsys.readouterr()
     assert out == 'default: not active\n'
+    cmd(db, timesheet='default')
+    out, err = capsys.readouterr()
+    assert out == 'default: not active\n'
 
 def test_out(start, cmd, db):
     time_out = time_now + 300
