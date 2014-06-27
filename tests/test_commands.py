@@ -54,9 +54,15 @@ def test_alter(start, cmd, db):
     assert entries(db)[0][1:5] == ('default', int(time_now), None, 'Testing alter')
 
 def test_display(capsys, end, cmd, db):
+    # Test plain
     cmd(db)
     out, err = capsys.readouterr()
     regex = re.compile(r'Apr 14, 2014.*19:45:38.*19:50:38.*Working.*')
+    assert regex.search(out) is not None
+    # Test CSV
+    cmd(db, format='csv')
+    out, err = capsys.readouterr()
+    regex = re.compile(r'.*04/14/2014 19:45:38,04/14/2014 19:50:38,300,Working.*', re.M)
     assert regex.search(out) is not None
 
 def test_in(cmd, db):
