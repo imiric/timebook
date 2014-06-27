@@ -53,12 +53,12 @@ def pprint_table(table, footer_row=False):
     else:
         check = table
     widths = [3 + max(len(row[col]) for row in check) for col
-              in xrange(len(table[0]))]
+              in range(len(table[0]))]
     for row in table:
         # Don't pad the final column
         first_cols = [cell + ' ' * (spacing - len(cell))
                       for (cell, spacing) in zip(row[:-1], widths[:-1])]
-        print ''.join(first_cols + [row[-1]])
+        print(''.join(first_cols + [row[-1]]))
 
 today_str = time.strftime("%Y-%m-%d", datetime.datetime.now().timetuple())
 matches = [(re.compile(r'^\d+:\d+$'), today_str + " ", ":00"),
@@ -73,7 +73,7 @@ def parse_date_time(dt_str):
         if patt.match(dt_str):
             res = time.strptime(prepend + dt_str + postpend, fmt)
             return int(time.mktime(res))
-    raise ValueError, "%s is not in a valid time format"%dt_str
+    raise ValueError("%s is not in a valid time format"%dt_str)
 
 def parse_date_time_or_now(dt_str):
     if dt_str:

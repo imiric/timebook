@@ -21,6 +21,16 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+from __future__ import print_function
+from __future__ import unicode_literals
+from __future__ import absolute_import
+
+try:
+    import __builtin__
+    input = getattr(__builtin__, 'raw_input')
+except (ImportError, AttributeError):
+    pass
+
 from datetime import datetime, timedelta
 from functools import wraps
 from gettext import ngettext
@@ -56,7 +66,7 @@ def post_hook(db, func_name):
 
 def command(name=None, aliases=()):
     def decorator(func):
-        func.name = name or func.func_code.co_name
+        func.name = name or func.__code__.co_name
         commands[func.name] = func
         func.description = func.__doc__.split('\n')[0].strip()
         for alias in aliases:
@@ -74,22 +84,26 @@ def run_command(db, name, args):
     from docopt import docopt
     func_name = cmdutil.complete(commands, name, 'command')
     try:
-        db.execute(u'begin')
+        db.execute('begin')
         cmd = commands[func_name]
         cmd_help = inspect.getdoc(cmd)
         args = docopt(cmd_help, argv=[func_name] + args)
         cmd_argspec = inspect.getargspec(cmd)[0]
         call_args = {}
-        for arg in args.iterkeys():
-            a = arg.translate(None, '-<>')
+        # Used for stripping reserved characters from the command-line
+        # argument, in order to pass the correct argument name to the command
+        # function.
+        trans_table = dict((ord(c), None) for c in '-<>')
+        for arg in args.keys():
+            a = arg.translate(trans_table)
             if a in cmd_argspec:
                 call_args[a] = args[arg]
         cmd(db, **call_args)
     except:
-        db.execute(u'rollback')
+        db.execute('rollback')
         raise
     else:
-        db.execute(u'commit')
+        db.execute('commit')
 
 # Commands
 
@@ -129,22 +143,22 @@ def in_(db, description='', switch=None, out=False, at=None, resume=False,
     else:
         sheet = dbutil.get_current_sheet(db)
     if resume and description:
-        raise SystemExit, '"--resume" already sets a description'
+        raise SystemExit('"--resume" already sets a description')
     timestamp = cmdutil.parse_date_time_or_now(at)
     if out:
         clock_out(db, timestamp=timestamp)
     running = dbutil.get_active_info(db, sheet)
     if running is not None:
-        raise SystemExit, 'error: timesheet already active'
+        raise SystemExit('error: timesheet already active')
     most_recent_clockout = dbutil.get_most_recent_clockout(db, sheet)
-    description = u' '.join(description) or None
+    description = ' '.join(description) or None
     if most_recent_clockout:
         (previous_timestamp, previous_description) = most_recent_clockout
         if timestamp < previous_timestamp:
-            raise SystemExit, 'error: time periods could end up overlapping'
+            raise SystemExit('error: time periods could end up overlapping')
         if resume:
             description = previous_description
-    db.execute(u'''
+    db.execute('''
     insert into entry (
         sheet, start_time, description, extra
     ) values (?,?,?,?)
@@ -169,15 +183,15 @@ def kill(db, timesheet=None):
         yes_answers = ('y', 'yes')
         # Use print to display the prompt since it intelligently decodes
         # unicode strings.
-        print (u'delete timesheet %s?' % to_delete),
-        confirm = raw_input('').strip().lower() in yes_answers
+        print(('delete timesheet %s?' % to_delete), end=' ')
+        confirm = input('').strip().lower() in yes_answers
     except (KeyboardInterrupt, EOFError):
         confirm = False
-        print
+        print()
     if not confirm:
-        print 'canceled'
+        print('canceled')
         return
-    db.execute(u'delete from entry where sheet = ?', (to_delete,))
+    db.execute('delete from entry where sheet = ?', (to_delete,))
     if switch_to_default:
         switch(db, timesheet='default')
 
@@ -192,7 +206,7 @@ def list(db, simple=False):
     """
     if simple:
         db.execute(
-        u'''
+        '''
         select
             distinct sheet
         from
@@ -200,11 +214,11 @@ def list(db, simple=False):
         order by
             sheet asc;
         ''')
-        print u'\n'.join(r[0] for r in db.fetchall())
+        print('\n'.join(r[0] for r in db.fetchall()))
         return
 
     table = [[' Timesheet', 'Running', 'Today', 'Total time']]
-    db.execute(u'''
+    db.execute('''
     select
         e1.sheet as name,
         e1.sheet = meta.value as is_current,
@@ -235,7 +249,7 @@ def list(db, simple=False):
     ''')
     sheets = db.fetchall()
     if len(sheets) == 0:
-        print u'(no sheets)'
+        print('(no sheets)')
         return
     for (name, is_current, active, today, total) in sheets:
         cur_name = '%s%s' % ('*' if is_current else ' ', name)
@@ -262,7 +276,7 @@ def switch(db, timesheet, verbose=False):
     # optimization: check that the given timesheet is not already
     # current. updates are far slower than selects.
     if dbutil.get_current_sheet(db) != timesheet:
-        db.execute(u'''
+        db.execute('''
         update
             meta
         set
@@ -274,12 +288,12 @@ def switch(db, timesheet, verbose=False):
     if verbose:
         entry_count = dbutil.get_entry_count(db, timesheet)
         if entry_count == 0:
-            print u'switched to empty timesheet "%s"' % timesheet
+            print('switched to empty timesheet "%s"' % timesheet)
         else:
-            print ngettext(
-                u'switched to timesheet "%s" (1 entry)' % timesheet,
-                u'switched to timesheet "%s" (%s entries)' % (
-                    timesheet, entry_count), entry_count)
+            print(ngettext(
+                'switched to timesheet "%s" (1 entry)' % timesheet,
+                'switched to timesheet "%s" (%s entries)' % (
+                    timesheet, entry_count), entry_count))
 
 @command(aliases=('stop',))
 def out(db, at=None, verbose=False):
@@ -301,14 +315,14 @@ def clock_out(db, at=None, verbose=False, timestamp=None):
         timestamp = cmdutil.parse_date_time_or_now(at)
     active = dbutil.get_current_start_time(db)
     if active is None:
-        raise SystemExit, 'error: timesheet not active'
+        raise SystemExit('error: timesheet not active')
     active_id, start_time = active
     active_time = timestamp - start_time
     if verbose:
-        print timedelta(seconds=active_time)
+        print(timedelta(seconds=active_time))
     if active_time < 0:
-        raise SystemExit, "Error: Negative active time"
-    db.execute(u'''
+        raise SystemExit("Error: Negative active time")
+    db.execute('''
     update
         entry
     set
@@ -328,9 +342,9 @@ def alter(db, description):
     """
     active = dbutil.get_current_active_info(db)
     if active is None:
-        raise SystemExit, 'error: timesheet not active'
+        raise SystemExit('error: timesheet not active')
     entry_id = active[0]
-    db.execute(u'''
+    db.execute('''
     update
         entry
     set
@@ -347,7 +361,7 @@ def running(db):
 
     Print all active sheets and any messages associated with them.
     """
-    db.execute(u'''
+    db.execute('''
     select
         entry.sheet,
         ifnull(entry.description, '--')
@@ -358,7 +372,7 @@ def running(db):
     order by
         entry.sheet asc;
     ''')
-    cmdutil.pprint_table([(u'Timesheet', u'Description')] + db.fetchall())
+    cmdutil.pprint_table([('Timesheet', 'Description')] + db.fetchall())
 
 @command(aliases=('info',))
 def now(db, timesheet=None, simple=False, notes=False):
@@ -378,7 +392,7 @@ def now(db, timesheet=None, simple=False, notes=False):
       -n, --notes   Only display the notes associated with the current period.
     """
     if simple:
-        print dbutil.get_current_sheet(db)
+        print(dbutil.get_current_sheet(db))
         return
 
     if timesheet:
@@ -389,8 +403,8 @@ def now(db, timesheet=None, simple=False, notes=False):
 
     entry_count = dbutil.get_entry_count(db, sheet)
     if entry_count == 0:
-        raise SystemExit, '%(prog)s: error: sheet is empty. For program \
-usage, see "%(prog)s --help".' % {'prog': os.path.basename(sys.argv[0])}
+        raise SystemExit('%(prog)s: error: sheet is empty. For program \
+usage, see "%(prog)s --help".' % {'prog': os.path.basename(sys.argv[0])})
 
     running = dbutil.get_active_info(db, sheet)
     _notes = ''
@@ -404,9 +418,9 @@ usage, see "%(prog)s --help".' % {'prog': os.path.basename(sys.argv[0])}
         else:
             active = duration
     if notes:
-        print _notes
+        print(_notes)
     else:
-        print '%s: %s' % (sheet, active)
+        print('%s: %s' % (sheet, active))
 
 @command(aliases=('export', 'format', 'show'))
 def display(db, timesheet=None, format='plain', start=None, end=None):
@@ -454,14 +468,14 @@ def display(db, timesheet=None, format='plain', start=None, end=None):
     elif format == 'csv':
         format_csv(db, sheet, where)
     else:
-        raise SystemExit, 'Invalid format: %s' % format
+        raise SystemExit('Invalid format: %s' % format)
 
 def format_csv(db, sheet, where):
     import csv
 
     writer = csv.writer(sys.stdout)
     writer.writerow(('Start', 'End', 'Length', 'Description'))
-    db.execute(u'''
+    db.execute('''
     select
        start_time,
        end_time,
@@ -477,17 +491,17 @@ def format_csv(db, sheet, where):
     format = lambda t: datetime.fromtimestamp(t).strftime(
         '%m/%d/%Y %H:%M:%S')
     rows = db.fetchall()
-    writer.writerows(map(lambda row: (
-        format(row[0]), format(row[1]), row[2], row[3]), rows))
+    writer.writerows([(
+        format(row[0]), format(row[1]), row[2], row[3]) for row in rows])
     total_formula = '=SUM(C2:C%d)/3600' % (len(rows) + 1)
     writer.writerow(('Total', '', total_formula, ''))
 
 def format_timebook(db, sheet, where):
-    db.execute(u'''
+    db.execute('''
     select count(*) > 0 from entry where sheet = ?%s
     ''' % where, (sheet,))
     if not db.fetchone()[0]:
-        print '(empty)'
+        print('(empty)')
         return
 
     displ_time = lambda t: time.strftime('%H:%M:%S', time.localtime(t))
@@ -498,7 +512,7 @@ def format_timebook(db, sheet, where):
 
     last_day = None
     table = [['Day', 'Start      End', 'Duration', 'Notes']]
-    db.execute(u'''
+    db.execute('''
     select
         date(e.start_time, 'unixepoch', 'localtime') as day,
         ifnull(sum(ifnull(e.end_time, strftime('%%s', 'now')) -
@@ -514,7 +528,7 @@ def format_timebook(db, sheet, where):
     ''' % where, (sheet,))
     days = db.fetchall()
     days_iter = iter(days)
-    db.execute(u'''
+    db.execute('''
     select
         date(e.start_time, 'unixepoch', 'localtime') as day,
         e.start_time as start,
@@ -548,12 +562,12 @@ def format_timebook(db, sheet, where):
                 # iteration. This is skipped the first iteration,
                 # since last_day is None.
                 table.append(['', '', displ_total(day_total), ''])
-            cur_day, day_total = days_iter.next()
+            cur_day, day_total = next(days_iter)
             assert day == cur_day
             table.append([date, trange, diff, description])
             last_day = day
 
-    db.execute(u'''
+    db.execute('''
     select
         ifnull(sum(ifnull(e.end_time, strftime('%%s', 'now')) -
                    e.start_time), 0) as total

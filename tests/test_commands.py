@@ -10,9 +10,15 @@ from timebook.commands import commands
 # Fixtures ###
 
 @pytest.fixture
-def patch_raw_input(monkeypatch):
-    import __builtin__
-    monkeypatch.setattr(__builtin__, 'raw_input', lambda *a: 'yes')
+def patch_input(monkeypatch):
+    try:
+        # Python >=3
+        import builtins
+        monkeypatch.setattr(builtins, 'input', lambda *a: 'yes')
+    except (ImportError):
+        # Python <3
+        import timebook.commands
+        monkeypatch.setattr(timebook.commands, 'input', lambda *a: 'yes')
 
 time_now = 1397497538.088239
 
@@ -22,7 +28,7 @@ def db():
 
 @pytest.fixture
 def cmd(request):
-    cmd_name = request.function.func_name[5:]  # strip the 'test_' prefix
+    cmd_name = request.function.__name__[5:]  # strip the 'test_' prefix
     return commands.get(cmd_name)
 
 @pytest.fixture
@@ -58,7 +64,7 @@ def test_in(cmd, db):
     cmd(db, ['Working'], at=time_in_str)
     assert entries(db)[0][1:5] == ('default', int(time_now), None, 'Working')
 
-def test_kill(start, cmd, db, patch_raw_input):
+def test_kill(start, cmd, db, patch_input):
     assert entries(db)[0][1:5] == ('default', int(time_now), None, 'Working')
     cmd(db)
     assert entries(db) == []
