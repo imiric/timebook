@@ -174,3 +174,13 @@ Commands
   "default".
 
   usage: ``t switch TIMESHEET``
+
+
+Tests
+~~~~~
+
+To run the test suite on Python 2.6, 2.7 and 3.4 (assuming the intepreters
+are installed on your system),
+`install tox <http://tox.readthedocs.org/en/latest/install.html>`_ and run::
+
+  $ tox
