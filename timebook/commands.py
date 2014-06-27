@@ -63,9 +63,9 @@ def command(name=None, aliases=()):
             if alias not in commands:
                 commands[alias] = func
         @wraps(func)
-        def decorated(db, args, **kwargs):
+        def decorated(db, *args, **kwargs):
             args, kwargs = pre_hook(db, func.name)(db, args, kwargs)
-            res = func(db, args, **kwargs)
+            res = func(db, *args, **kwargs)
             return post_hook(db, func.name)(db, res)
         return decorated
     return decorator
