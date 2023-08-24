@@ -69,7 +69,7 @@ def parse_args(argv=[]):
     )
     encoding = args['--encoding']
     try:
-        args.__dict__ = dict((k, v.decode(encoding)) for (k, v) in
+        args.__dict__ = dict((k, v) for (k, v) in
                                 args.items() if isinstance(v, str))
     except LookupError:
         raise SystemExit('unknown encoding %s' % encoding)
