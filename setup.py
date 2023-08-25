@@ -5,7 +5,7 @@ from timebook import get_version
 setup(
     name='timebook',
     version=get_version(),
-    url='http://bitbucket.org/trevor/timebook/',
+    url='https://github.com/imiric/timebook',
     description='track what you spend time on',
     author='Trevor Caira',
     author_email='trevor@caira.com',

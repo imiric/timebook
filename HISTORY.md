@@ -1,3 +1,10 @@
+2.0.0 / 2023-08-25
+==================
+
+  * Removed support for Python 2.x.
+  * Fixed support for Python >=3.11. Thanks @ricojuinio!
+  * Fixed tests for latest pytest version.
+
 1.3.0 / 2014-06-27
 ==================
 
