@@ -88,7 +88,7 @@ def run_command(db, name, args):
         cmd = commands[func_name]
         cmd_help = inspect.getdoc(cmd)
         args = docopt(cmd_help, argv=[func_name] + args)
-        cmd_argspec = inspect.getargspec(cmd)[0]
+        cmd_argspec = inspect.getfullargspec(cmd)[0]
         call_args = {}
         # Used for stripping reserved characters from the command-line
         # argument, in order to pass the correct argument name to the command
