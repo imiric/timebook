@@ -21,14 +21,11 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-try:
-    from ConfigParser import SafeConfigParser  # Python <3
-except ImportError:
-    from configparser import SafeConfigParser  # Python >=3
+from configparser import ConfigParser
 
 import os
 
-class ConfigParser(SafeConfigParser):
+class CustomConfigParser(ConfigParser):
     def __getitem__(self, name):
         return dict(self.items(name))
 
@@ -42,7 +39,7 @@ def subdirs(path):
         last = path.find(os.path.sep, last + 1)
 
 def parse_config(filename):
-    config = ConfigParser()
+    config = CustomConfigParser()
     if not os.path.exists(os.path.dirname(filename)):
         for d in subdirs(filename):
             if os.path.exists(d):
@@ -57,7 +54,7 @@ def parse_config(filename):
             f.close()
     f = open(filename)
     try:
-        config.readfp(f)
+        config.read_file(f)
     finally:
         f.close()
     return config

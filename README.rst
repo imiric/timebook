@@ -179,8 +179,8 @@ Commands
 Tests
 ~~~~~
 
-To run the test suite on Python 2.6, 2.7 and 3.4 (assuming the intepreters
-are installed on your system),
-`install tox <http://tox.readthedocs.org/en/latest/install.html>`_ and run::
+To run the test suite on Python 3.11 (assuming the intepreter
+is installed on your system),
+`install tox <https://pypi.org/project/tox/>`_ and run::
 
   $ tox

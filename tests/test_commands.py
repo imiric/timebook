@@ -11,14 +11,8 @@ from timebook.commands import commands
 
 @pytest.fixture
 def patch_input(monkeypatch):
-    try:
-        # Python >=3
-        import builtins
-        monkeypatch.setattr(builtins, 'input', lambda *a: 'yes')
-    except (ImportError):
-        # Python <3
-        import timebook.commands
-        monkeypatch.setattr(timebook.commands, 'input', lambda *a: 'yes')
+    import builtins
+    monkeypatch.setattr(builtins, 'input', lambda *a: 'yes')
 
 time_now = 1397497538.088239
 
