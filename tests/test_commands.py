@@ -37,7 +37,6 @@ def start(db):
 def end(start, db):
     db.execute('update entry set end_time = ?', (int(time_now + 300),))
 
-@pytest.fixture
 def entries(db):
     return db.execute('select * from entry').fetchall()
 
